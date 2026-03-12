@@ -1,6 +1,8 @@
 package com.typemini.app
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -20,9 +22,9 @@ class AppNavigationTest {
 
     @Test
     fun home_can_open_unit_and_start_article() {
-        composeRule.onNodeWithText("Daily Basics").performClick()
+        composeRule.onNode(hasText("Daily Basics") and hasClickAction()).performClick()
         composeRule.onNodeWithText("Morning Routine").assertIsDisplayed()
-        composeRule.onNodeWithText("Morning Routine").performClick()
+        composeRule.onNode(hasText("Morning Routine") and hasClickAction()).performClick()
         composeRule.onNodeWithText("Daily Basics · Article 1").assertIsDisplayed()
         composeRule.onNodeWithText("Morning Routine").assertIsDisplayed()
     }

@@ -1,7 +1,9 @@
 package com.typemini.app.feature.home
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,20 +11,23 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.typemini.app.data.repository.PracticeRepository
 import com.typemini.app.domain.model.CourseOverview
 import com.typemini.app.domain.model.UnitProgress
+import com.typemini.app.ui.components.CompactListItem
+import com.typemini.app.ui.components.CompactMetricPill
+import com.typemini.app.ui.components.CompactSectionHeader
 import com.typemini.app.ui.components.EmptyStateCard
+import com.typemini.app.ui.components.SectionDivider
 import com.typemini.app.ui.components.SectionPill
-import com.typemini.app.ui.components.StatSummaryRow
 import com.typemini.app.ui.components.TypeMiniSurfaceCard
 
 @Composable
@@ -64,57 +69,21 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .navigationBarsPadding(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
-            TypeMiniSurfaceCard(
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    text = "English Practice",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = "A clean course flow with units, articles, progress, and a calm typing session.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                StatSummaryRow(
-                    label = "Completed units",
-                    value = "${overview.completedUnits}/${overview.totalUnits}",
-                )
-            }
+            CompactSectionHeader(
+                title = "English Practice",
+                subtitle = "Short lessons, visible progress, and a calm place to keep typing.",
+            )
         }
 
         item {
-            TypeMiniSurfaceCard(
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                val resume = overview.resumeState
-                Text(
-                    text = if (overview.isCourseCompleted) "Course complete" else "Continue",
-                    style = MaterialTheme.typography.titleLarge,
-                )
-                Text(
-                    text = when {
-                        resume == null -> "No lesson is available yet."
-                        overview.isCourseCompleted -> "You have completed every unit. Review any unit or restart from the first lesson."
-                        else -> "${resume.unitTitle} · ${resume.articleTitle}"
-                    },
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = resume != null,
-                    onClick = {
-                        resume?.let { onContinue(it.unitId, it.articleId) }
-                    },
-                ) {
-                    Text("Continue lesson")
-                }
-            }
+            ContinueCard(
+                overview = overview,
+                onContinue = onContinue,
+            )
         }
 
         item {
@@ -145,8 +114,11 @@ fun HomeScreen(
                 )
             }
         } else {
+            item {
+                SectionDivider()
+            }
             items(overview.units, key = { it.unit.id }) { progress ->
-                UnitProgressCard(
+                UnitProgressRow(
                     progress = progress,
                     onClick = { onOpenUnit(progress.unit.id) },
                 )
@@ -155,38 +127,74 @@ fun HomeScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun UnitProgressCard(
-    progress: UnitProgress,
-    onClick: () -> Unit,
+private fun ContinueCard(
+    overview: CourseOverview,
+    onContinue: (String, String) -> Unit,
 ) {
+    val resume = overview.resumeState
+
     TypeMiniSurfaceCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = progress.unit.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+                text = if (overview.isCourseCompleted) "Course complete" else "Continue",
             )
+            SectionPill("${overview.completedUnits}/${overview.totalUnits}")
+        }
+
+        Text(
+            text = when {
+                resume == null -> "No lesson is available yet."
+                overview.isCourseCompleted -> "You have completed every unit. Open any unit to review or restart."
+                else -> "${resume.unitTitle} · ${resume.articleTitle}"
+            },
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            CompactMetricPill(label = "Units", value = "${overview.completedUnits}/${overview.totalUnits}")
+            if (resume != null) {
+                CompactMetricPill(label = "Next", value = resume.unitTitle)
+            }
+        }
+
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            enabled = resume != null,
+            onClick = {
+                resume?.let { onContinue(it.unitId, it.articleId) }
+            },
+        ) {
+            Text("Continue lesson")
+        }
+    }
+}
+
+@Composable
+private fun UnitProgressRow(
+    progress: UnitProgress,
+    onClick: () -> Unit,
+) {
+    CompactListItem(
+        title = progress.unit.title,
+        subtitle = progress.unit.difficultyLabel,
+        supportingText = progress.unit.description,
+        onClick = onClick,
+        trailingContent = {
             SectionPill(
                 text = if (progress.isCompleted) "Complete" else "${progress.completedArticles}/${progress.totalArticles}",
             )
-        }
-        Text(
-            text = progress.unit.description,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = progress.unit.difficultyLabel,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-        )
-    }
+        },
+    )
 }

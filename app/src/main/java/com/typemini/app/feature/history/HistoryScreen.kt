@@ -1,17 +1,14 @@
 package com.typemini.app.feature.history
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
@@ -27,12 +24,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.typemini.app.data.repository.PracticeRepository
 import com.typemini.app.domain.model.HistorySortMode
 import com.typemini.app.domain.model.PracticeResult
-import com.typemini.app.ui.components.EmptyStateCard
-import com.typemini.app.ui.components.StatSummaryRow
-import com.typemini.app.ui.components.TypeMiniSurfaceCard
 import com.typemini.app.navigation.formatAccuracy
 import com.typemini.app.navigation.formatNumber
 import com.typemini.app.navigation.formatTimestamp
+import com.typemini.app.ui.components.CompactListItem
+import com.typemini.app.ui.components.CompactMetricPill
+import com.typemini.app.ui.components.CompactSectionHeader
+import com.typemini.app.ui.components.EmptyStateCard
+import com.typemini.app.ui.components.SectionDivider
 
 @Composable
 fun HistoryRoute(
@@ -62,6 +61,7 @@ fun HistoryRoute(
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HistoryScreen(
     sortMode: HistorySortMode,
@@ -77,40 +77,34 @@ fun HistoryScreen(
         modifier = Modifier
             .fillMaxSize()
             .navigationBarsPadding(),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
-            TypeMiniSurfaceCard(
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    text = "Recent rhythm",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = "A quiet view of your last seven days: how fast, how clean, and how consistently you returned.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            CompactSectionHeader(
+                title = "History",
+                subtitle = "A compact log of recent sessions, sorted the way you want to review them.",
+            )
         }
 
         item {
-            TypeMiniSurfaceCard(
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                StatSummaryRow(label = "Average WPM", value = averageWpm)
-                StatSummaryRow(label = "Best WPM", value = bestWpm)
-                StatSummaryRow(label = "Average ACC", value = averageAccuracy)
-                StatSummaryRow(label = "Completed sessions", value = sessionCount)
-            }
-        }
-
-        item {
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                CompactMetricPill(label = "AVG", value = averageWpm)
+                CompactMetricPill(label = "BEST", value = bestWpm)
+                CompactMetricPill(label = "ACC", value = averageAccuracy)
+                CompactMetricPill(label = "SESSIONS", value = sessionCount)
+            }
+        }
+
+        item {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 HistorySortMode.entries.forEach { option ->
                     FilterChip(
@@ -130,12 +124,15 @@ fun HistoryScreen(
             item {
                 EmptyStateCard(
                     title = "No practice saved yet",
-                    body = "Complete a session in Practice and your results will appear here automatically.",
+                    body = "Complete a session and your results will appear here automatically.",
                 )
             }
         } else {
+            item {
+                SectionDivider()
+            }
             items(results, key = { it.id }) { result ->
-                HistoryResultCard(
+                HistoryResultRow(
                     result = result,
                     onClick = { onOpenResult(result.id) },
                 )
@@ -145,73 +142,15 @@ fun HistoryScreen(
 }
 
 @Composable
-private fun HistoryResultCard(
+private fun HistoryResultRow(
     result: PracticeResult,
     onClick: () -> Unit,
 ) {
-    TypeMiniSurfaceCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = result.articleTitle,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = result.unitTitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Text(
-                    text = result.mode.title,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-
-            Text(
-                text = formatTimestamp(result.createdAt),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                ResultTag(label = "WPM ${formatNumber(result.wpm)}")
-                ResultTag(label = "ACC ${formatAccuracy(result.accuracy)}")
-                ResultTag(label = "SCORE ${result.score}")
-            }
-        }
-    }
-}
-
-@Composable
-private fun ResultTag(label: String) {
-    Text(
-        text = label,
-        modifier = Modifier
-            .background(
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                shape = RoundedCornerShape(999.dp),
-            )
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurface,
+    CompactListItem(
+        title = result.articleTitle,
+        subtitle = result.unitTitle,
+        supportingText = "${formatTimestamp(result.createdAt)} · ${result.mode.title}",
+        trailingText = "${formatNumber(result.wpm)} WPM · ${formatAccuracy(result.accuracy)}",
+        onClick = onClick,
     )
 }

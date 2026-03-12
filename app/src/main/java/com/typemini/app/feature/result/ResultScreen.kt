@@ -2,7 +2,9 @@ package com.typemini.app.feature.result
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -22,9 +24,11 @@ import com.typemini.app.navigation.formatAccuracy
 import com.typemini.app.navigation.formatNumber
 import com.typemini.app.navigation.formatSeconds
 import com.typemini.app.navigation.formatTimestamp
+import com.typemini.app.ui.components.CompactListItem
+import com.typemini.app.ui.components.CompactMetricPill
+import com.typemini.app.ui.components.CompactSectionHeader
 import com.typemini.app.ui.components.EmptyStateCard
-import com.typemini.app.ui.components.MetricTile
-import com.typemini.app.ui.components.StatSummaryRow
+import com.typemini.app.ui.components.SectionDivider
 import com.typemini.app.ui.components.TypeMiniSurfaceCard
 
 @Composable
@@ -43,6 +47,7 @@ fun ResultRoute(
             modifier = Modifier
                 .fillMaxSize()
                 .navigationBarsPadding(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
         ) {
             item {
                 EmptyStateCard(
@@ -63,6 +68,7 @@ fun ResultRoute(
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ResultScreen(
     result: PracticeResult,
@@ -75,11 +81,33 @@ fun ResultScreen(
         modifier = Modifier
             .fillMaxSize()
             .navigationBarsPadding(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
+            CompactSectionHeader(
+                title = result.articleTitle,
+                subtitle = "${result.unitTitle} · Saved ${formatTimestamp(result.createdAt)}",
+            )
+        }
+
+        item {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                CompactMetricPill(label = "WPM", value = formatNumber(result.wpm))
+                CompactMetricPill(label = "ACC", value = formatAccuracy(result.accuracy))
+                CompactMetricPill(label = "TIME", value = formatSeconds(result.elapsedSeconds))
+                CompactMetricPill(label = "SCORE", value = result.score.toString())
+            }
+        }
+
+        item {
             TypeMiniSurfaceCard(
                 modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
             ) {
                 Text(
                     text = when {
@@ -87,46 +115,36 @@ fun ResultScreen(
                         result.accuracy >= 95.0 -> "Clean rhythm."
                         else -> "Another measured pass."
                     },
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "Saved ${formatTimestamp(result.createdAt)}",
-                    style = MaterialTheme.typography.bodyLarge,
+                    text = "Use this page as a quick checkpoint, then move to the next article or repeat the same one.",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
 
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                MetricTile(label = "WPM", value = formatNumber(result.wpm), modifier = Modifier.weight(1f))
-                MetricTile(label = "ACC", value = formatAccuracy(result.accuracy), modifier = Modifier.weight(1f))
-            }
+            SectionDivider()
         }
 
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                MetricTile(label = "TIME", value = formatSeconds(result.elapsedSeconds), modifier = Modifier.weight(1f))
-                MetricTile(label = "SCORE", value = result.score.toString(), modifier = Modifier.weight(1f))
-            }
+            CompactListItem(
+                title = result.unitTitle,
+                subtitle = "Unit",
+                trailingText = result.mode.title,
+            )
         }
 
         item {
-            TypeMiniSurfaceCard(
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                StatSummaryRow(label = "Unit", value = result.unitTitle)
-                StatSummaryRow(label = "Article", value = result.articleTitle)
-                StatSummaryRow(label = "Mode", value = result.mode.title)
-                StatSummaryRow(label = "Correct keys", value = result.correctKeystrokes.toString())
-                StatSummaryRow(label = "Errors", value = result.errorKeystrokes.toString())
-            }
+            CompactListItem(
+                title = "Article ${result.articleOrder} · ${result.articleTitle}",
+                subtitle = "Article",
+                trailingText = "${result.correctKeystrokes} correct",
+                supportingText = "${result.errorKeystrokes} errors",
+            )
         }
 
         item {

@@ -1,15 +1,13 @@
 package com.typemini.app.feature.unit
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -19,9 +17,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.typemini.app.data.repository.PracticeRepository
 import com.typemini.app.domain.model.ArticleProgress
 import com.typemini.app.domain.model.UnitSummary
+import com.typemini.app.ui.components.CompactListItem
+import com.typemini.app.ui.components.CompactMetricPill
+import com.typemini.app.ui.components.CompactSectionHeader
 import com.typemini.app.ui.components.EmptyStateCard
+import com.typemini.app.ui.components.SectionDivider
 import com.typemini.app.ui.components.SectionPill
-import com.typemini.app.ui.components.StatSummaryRow
 import com.typemini.app.ui.components.TypeMiniSurfaceCard
 
 @Composable
@@ -37,6 +38,7 @@ fun UnitRoute(
             modifier = Modifier
                 .fillMaxSize()
                 .navigationBarsPadding(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
         ) {
             item {
                 EmptyStateCard(
@@ -63,34 +65,38 @@ fun UnitScreen(
         modifier = Modifier
             .fillMaxSize()
             .navigationBarsPadding(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
+            CompactSectionHeader(
+                title = summary.unit.title,
+                subtitle = summary.unit.description,
+            )
+        }
+
+        item {
             TypeMiniSurfaceCard(
                 modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
             ) {
-                Text(
-                    text = summary.unit.title,
-                    style = MaterialTheme.typography.headlineMedium,
-                )
-                Text(
-                    text = summary.unit.description,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                StatSummaryRow(
+                CompactMetricPill(
                     label = "Progress",
                     value = "${summary.completedArticles}/${summary.totalArticles}",
                 )
-                StatSummaryRow(
-                    label = "Difficulty",
+                CompactMetricPill(
+                    label = "Level",
                     value = summary.unit.difficultyLabel,
                 )
             }
         }
 
+        item {
+            SectionDivider()
+        }
+
         items(summary.articleProgress, key = { it.article.id }) { progress ->
-            ArticleProgressCard(
+            ArticleProgressRow(
                 progress = progress,
                 onStartArticle = onStartArticle,
             )
@@ -99,47 +105,17 @@ fun UnitScreen(
 }
 
 @Composable
-private fun ArticleProgressCard(
+private fun ArticleProgressRow(
     progress: ArticleProgress,
     onStartArticle: (String, String) -> Unit,
 ) {
-    TypeMiniSurfaceCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onStartArticle(progress.article.unitId, progress.article.id) },
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = "Article ${progress.article.order}",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            SectionPill(
-                text = if (progress.isCompleted) "Done" else "New",
-            )
-        }
-        Text(
-            text = progress.article.title,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            text = progress.article.description,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        StatSummaryRow(
-            label = "Attempts",
-            value = progress.attemptCount.toString(),
-        )
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { onStartArticle(progress.article.unitId, progress.article.id) },
-        ) {
-            Text(if (progress.isCompleted) "Practice again" else "Start article")
-        }
-    }
+    CompactListItem(
+        title = progress.article.title,
+        subtitle = "Article ${progress.article.order}",
+        supportingText = "${progress.article.tokenCount} words · ${progress.attemptCount} attempts · ${progress.article.difficultyLabel}",
+        onClick = { onStartArticle(progress.article.unitId, progress.article.id) },
+        trailingContent = {
+            SectionPill(if (progress.isCompleted) "Done" else "New")
+        },
+    )
 }

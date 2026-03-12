@@ -4,12 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.typemini.app.domain.model.PracticeMode
 import com.typemini.app.feature.practice.PracticeUiState
 import com.typemini.app.feature.practice.PracticeViewModel
+import com.typemini.app.ui.components.CompactSectionHeader
 import com.typemini.app.ui.components.TypeMiniSurfaceCard
 
 @Composable
@@ -49,18 +48,19 @@ fun SettingsScreen(
             .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        CompactSectionHeader(
+            title = "Settings",
+            subtitle = "Keep settings narrow. Course selection belongs in the lesson flow.",
+        )
+
         TypeMiniSurfaceCard(
             modifier = Modifier.fillMaxWidth(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 16.dp),
         ) {
             Text(
-                text = "Typing Mode",
+                text = "Typing mode",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = "Course selection now lives in the learning flow. Settings only changes how each article is typed.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -79,7 +79,5 @@ fun SettingsScreen(
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(1.dp))
     }
 }
