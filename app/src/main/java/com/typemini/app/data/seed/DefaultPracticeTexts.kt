@@ -1,36 +1,139 @@
 package com.typemini.app.data.seed
 
-import com.typemini.app.domain.model.PracticeText
+import com.typemini.app.domain.model.PracticeArticle
+import com.typemini.app.domain.model.PracticeUnit
 
-val defaultPracticeTexts = listOf(
-    PracticeText(
-        id = "daily-english-core",
-        title = "Daily English Core",
-        difficultyLabel = "Foundation · 10 tokens",
-        content = "twin usual task violin monument personal let row rough rubber",
+val defaultPracticeUnits = listOf(
+    PracticeUnit(
+        id = "daily-basics",
+        title = "Daily Basics",
+        description = "Build a calm foundation with short scenes from ordinary English life.",
+        difficultyLabel = "Unit 1 · Foundation",
+        articles = listOf(
+            PracticeArticle(
+                id = "morning-routine",
+                unitId = "daily-basics",
+                title = "Morning Routine",
+                description = "A simple morning plan with clear action words.",
+                difficultyLabel = "Warm up · 22 tokens",
+                order = 1,
+                content = "every morning i open the window drink warm water and write a short plan before i leave home for work",
+            ),
+            PracticeArticle(
+                id = "city-breakfast",
+                unitId = "daily-basics",
+                title = "City Breakfast",
+                description = "Practice food and direction vocabulary in context.",
+                difficultyLabel = "Steady · 23 tokens",
+                order = 2,
+                content = "the small cafe near the station serves fresh bread soft eggs and strong coffee so the street feels awake before eight",
+            ),
+            PracticeArticle(
+                id = "after-work-walk",
+                unitId = "daily-basics",
+                title = "After Work Walk",
+                description = "A light paragraph about evening habits.",
+                difficultyLabel = "Steady · 24 tokens",
+                order = 3,
+                content = "after work i walk beside the river call one friend and let the cool air slow my thoughts before dinner",
+            ),
+            PracticeArticle(
+                id = "weekend-market",
+                unitId = "daily-basics",
+                title = "Weekend Market",
+                description = "A slightly longer passage with concrete nouns.",
+                difficultyLabel = "Stretch · 24 tokens",
+                order = 4,
+                content = "on saturday the market opens early and local families choose flowers fruit and paper bags full of bread and green tea",
+            ),
+        ),
     ),
-    PracticeText(
-        id = "flow-english-burst",
-        title = "Flow English Burst",
-        difficultyLabel = "Rhythm · 10 tokens",
-        content = "coffee narrow lantern season pocket frozen market feather signal window",
+    PracticeUnit(
+        id = "work-communication",
+        title = "Work and Communication",
+        description = "Move from daily rhythm into email, meetings, and collaboration.",
+        difficultyLabel = "Unit 2 · Applied",
+        articles = listOf(
+            PracticeArticle(
+                id = "clear-email",
+                unitId = "work-communication",
+                title = "Clear Email",
+                description = "Write with simple structure and direct purpose.",
+                difficultyLabel = "Applied · 24 tokens",
+                order = 1,
+                content = "a clear email starts with one purpose shares the needed detail and ends with the next action so the reader can reply fast",
+            ),
+            PracticeArticle(
+                id = "team-standup",
+                unitId = "work-communication",
+                title = "Team Standup",
+                description = "Practice progress updates and collaboration terms.",
+                difficultyLabel = "Applied · 25 tokens",
+                order = 2,
+                content = "during the morning standup each teammate reports yesterday progress names one blocker and explains what support could unlock the next task",
+            ),
+            PracticeArticle(
+                id = "customer-call",
+                unitId = "work-communication",
+                title = "Customer Call",
+                description = "Train attentive listening and summary language.",
+                difficultyLabel = "Focus · 25 tokens",
+                order = 3,
+                content = "on a customer call the best notes capture the main pain point the promised follow up and the exact deadline everyone accepted",
+            ),
+            PracticeArticle(
+                id = "project-handoff",
+                unitId = "work-communication",
+                title = "Project Handoff",
+                description = "A fuller operational paragraph with precise nouns.",
+                difficultyLabel = "Focus · 26 tokens",
+                order = 4,
+                content = "a strong handoff includes the current status key decisions open risks and the document links another teammate will need during the first hour",
+            ),
+        ),
     ),
-    PracticeText(
-        id = "steady-english-focus",
-        title = "Steady English Focus",
-        difficultyLabel = "Advanced · 10 tokens",
-        content = "anchor marble kingdom bright culture travel lemon whisper gentle object",
-    ),
-    PracticeText(
-        id = "calm-precision-set",
-        title = "Calm Precision Set",
-        difficultyLabel = "Accuracy · 10 tokens",
-        content = "harbor mirror classic rhythm pollen velvet temple secret modern ribbon",
-    ),
-    PracticeText(
-        id = "longer-word-stretch",
-        title = "Longer Word Stretch",
-        difficultyLabel = "Stretch · 10 tokens",
-        content = "gallery horizon melody chapter citizen balance cylinder festival luminous reliable",
+    PracticeUnit(
+        id = "ideas-reflection",
+        title = "Ideas and Reflection",
+        description = "Finish with more abstract English about learning, ideas, and reflection.",
+        difficultyLabel = "Unit 3 · Reflection",
+        articles = listOf(
+            PracticeArticle(
+                id = "small-learning",
+                unitId = "ideas-reflection",
+                title = "Small Learning",
+                description = "A reflective paragraph about steady growth.",
+                difficultyLabel = "Reflect · 24 tokens",
+                order = 1,
+                content = "real progress often begins with small repeated effort because the mind remembers patterns that arrive gently and return every day",
+            ),
+            PracticeArticle(
+                id = "creative-room",
+                unitId = "ideas-reflection",
+                title = "Creative Room",
+                description = "Practice descriptive language with abstract nouns.",
+                difficultyLabel = "Reflect · 24 tokens",
+                order = 2,
+                content = "creative work needs a quiet room enough time and the freedom to test weak ideas before one clear direction appears",
+            ),
+            PracticeArticle(
+                id = "calm-review",
+                unitId = "ideas-reflection",
+                title = "Calm Review",
+                description = "Review a process without rushing or judging.",
+                difficultyLabel = "Advanced · 25 tokens",
+                order = 3,
+                content = "a calm review looks at what worked what slowed the process and which habit should change before the next attempt begins",
+            ),
+            PracticeArticle(
+                id = "future-letter",
+                unitId = "ideas-reflection",
+                title = "Future Letter",
+                description = "Close the course with a forward-looking paragraph.",
+                difficultyLabel = "Advanced · 26 tokens",
+                order = 4,
+                content = "when you write a letter to your future self you name one promise one fear and one practice that will keep you moving",
+            ),
+        ),
     ),
 )

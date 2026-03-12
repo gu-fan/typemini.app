@@ -6,8 +6,11 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "practice_results")
 data class PracticeResultEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val practiceTextId: String,
-    val practiceTextTitle: String,
+    val unitId: String,
+    val unitTitle: String,
+    val articleId: String,
+    val articleTitle: String,
+    val articleOrder: Int,
     val mode: String,
     val correctKeystrokes: Int,
     val errorKeystrokes: Int,

@@ -13,6 +13,17 @@ data class TypingSession(
     val isFinished: Boolean,
     val tokens: List<String>,
     val waitingForSpace: Boolean,
+    val history: List<TypingSessionSnapshot> = emptyList(),
+)
+
+data class TypingSessionSnapshot(
+    val activeCharIndex: Int,
+    val activeTokenIndex: Int,
+    val correctKeystrokes: Int,
+    val errorKeystrokes: Int,
+    val hasError: Boolean,
+    val isFinished: Boolean,
+    val waitingForSpace: Boolean,
 )
 
 data class TypingMetrics(
@@ -48,6 +59,37 @@ fun createTypingSession(content: String): TypingSession {
 
 private fun normalizeCharacter(input: Char): Char = input.lowercaseChar()
 
+private fun TypingSession.snapshot(): TypingSessionSnapshot {
+    return TypingSessionSnapshot(
+        activeCharIndex = activeCharIndex,
+        activeTokenIndex = activeTokenIndex,
+        correctKeystrokes = correctKeystrokes,
+        errorKeystrokes = errorKeystrokes,
+        hasError = hasError,
+        isFinished = isFinished,
+        waitingForSpace = waitingForSpace,
+    )
+}
+
+private fun recordHistory(
+    previous: TypingSession,
+    next: TypingSession,
+): TypingSession {
+    if (
+        previous.activeCharIndex == next.activeCharIndex &&
+        previous.activeTokenIndex == next.activeTokenIndex &&
+        previous.correctKeystrokes == next.correctKeystrokes &&
+        previous.errorKeystrokes == next.errorKeystrokes &&
+        previous.hasError == next.hasError &&
+        previous.isFinished == next.isFinished &&
+        previous.waitingForSpace == next.waitingForSpace
+    ) {
+        return previous
+    }
+
+    return next.copy(history = previous.history + previous.snapshot())
+}
+
 private fun finishSession(session: TypingSession): TypingSession {
     return session.copy(
         hasError = false,
@@ -82,7 +124,7 @@ fun applyCharacterToSession(
 
     if (session.waitingForSpace) {
         return if (mode == PracticeMode.Space && input == ' ') {
-            advanceToken(session)
+            recordHistory(session, advanceToken(session))
         } else {
             session
         }
@@ -99,27 +141,46 @@ fun applyCharacterToSession(
         )
 
         if (next.activeCharIndex < token.length) {
-            return next
+            return recordHistory(session, next)
         }
 
         if (next.activeTokenIndex >= next.tokens.lastIndex) {
-            return finishSession(next)
+            return recordHistory(session, finishSession(next))
         }
 
-        return if (mode == PracticeMode.Auto) {
+        val updated = if (mode == PracticeMode.Auto) {
             advanceToken(next)
         } else {
             next.copy(waitingForSpace = true)
         }
+
+        return recordHistory(session, updated)
     }
 
     if (input == ' ') {
         return session
     }
 
+    return recordHistory(
+        session,
+        session.copy(
+            errorKeystrokes = session.errorKeystrokes + 1,
+            hasError = true,
+        ),
+    )
+}
+
+fun removeLastInputFromSession(session: TypingSession): TypingSession {
+    val snapshot = session.history.lastOrNull() ?: return session
     return session.copy(
-        errorKeystrokes = session.errorKeystrokes + 1,
-        hasError = true,
+        activeCharIndex = snapshot.activeCharIndex,
+        activeTokenIndex = snapshot.activeTokenIndex,
+        correctKeystrokes = snapshot.correctKeystrokes,
+        errorKeystrokes = snapshot.errorKeystrokes,
+        hasError = snapshot.hasError,
+        isFinished = snapshot.isFinished,
+        waitingForSpace = snapshot.waitingForSpace,
+        history = session.history.dropLast(1),
     )
 }
 
@@ -162,6 +223,7 @@ fun emptyTypingMetrics(tokens: List<String>): TypingMetrics = buildTypingMetrics
         isFinished = false,
         tokens = tokens,
         waitingForSpace = false,
+        history = emptyList(),
     ),
     elapsedSeconds = 1.0,
 )

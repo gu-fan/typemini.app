@@ -6,10 +6,12 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.typemini.app.data.repository.PracticeRepository
+import com.typemini.app.domain.model.CompletionNextDestination
 import com.typemini.app.domain.model.PracticeResultDraft
 import com.typemini.app.domain.session.applyCharacterToSession
 import com.typemini.app.domain.session.buildTypingMetrics
 import com.typemini.app.domain.session.createTypingSession
+import com.typemini.app.domain.session.removeLastInputFromSession
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,12 +31,14 @@ class PracticeViewModel(
     private var timerJob: Job? = null
 
     init {
-        val texts = repository.getPracticeTexts()
-        val initial = texts.firstOrNull()
+        val units = repository.getPracticeUnits()
+        val initialUnit = units.firstOrNull()
+        val initialArticle = initialUnit?.articles?.firstOrNull()
         _uiState.value = PracticeUiState(
-            texts = texts,
-            selectedTextId = initial?.id.orEmpty(),
-            session = createTypingSession(initial?.content.orEmpty()),
+            units = units,
+            activeUnitId = initialUnit?.id.orEmpty(),
+            activeArticleId = initialArticle?.id.orEmpty(),
+            session = createTypingSession(initialArticle?.content.orEmpty()),
         )
     }
 
@@ -42,8 +46,12 @@ class PracticeViewModel(
         resetSession()
     }
 
-    fun selectText(textId: String) {
-        resetSession(nextTextId = textId)
+    fun loadArticle(unitId: String, articleId: String) {
+        val current = _uiState.value
+        if (current.activeUnitId == unitId && current.activeArticleId == articleId) {
+            return
+        }
+        resetSession(nextUnitId = unitId, nextArticleId = articleId)
     }
 
     fun updateMode(mode: com.typemini.app.domain.model.PracticeMode) {
@@ -52,6 +60,15 @@ class PracticeViewModel(
 
     fun consumeCompletedResult() {
         _uiState.update { it.copy(completedResultId = null) }
+    }
+
+    fun clearResultAction() {
+        _uiState.update {
+            it.copy(
+                resultActionResultId = null,
+                nextDestination = null,
+            )
+        }
     }
 
     fun onInput(input: String): PracticeInputFeedback {
@@ -67,9 +84,30 @@ class PracticeViewModel(
         return feedback
     }
 
+    fun onBackspace(): PracticeInputFeedback {
+        val current = _uiState.value
+        val nextSession = removeLastInputFromSession(current.session)
+        if (nextSession == current.session) {
+            return PracticeInputFeedback.Ignored
+        }
+
+        _uiState.update {
+            it.copy(
+                session = nextSession,
+                finishedAtMillis = if (nextSession.isFinished) it.finishedAtMillis else null,
+                isSaving = false,
+                completedResultId = null,
+                resultActionResultId = null,
+                nextDestination = null,
+            )
+        }
+
+        return PracticeInputFeedback.Correct
+    }
+
     private fun processCharacter(char: Char): PracticeInputFeedback {
         val current = _uiState.value
-        if (current.activeText == null) return PracticeInputFeedback.Ignored
+        if (current.activeArticle == null || current.activeUnit == null) return PracticeInputFeedback.Ignored
 
         val now = System.currentTimeMillis()
         val nextStartedAt = current.startedAtMillis ?: if (char != ' ') now else null
@@ -116,7 +154,8 @@ class PracticeViewModel(
 
     private fun persistCompletion(finishedAt: Long) {
         val state = _uiState.value
-        val activeText = state.activeText ?: return
+        val activeUnit = state.activeUnit ?: return
+        val activeArticle = state.activeArticle ?: return
         val elapsedSeconds = max(state.elapsedMillis / 1000.0, 1.0)
         val metrics = buildTypingMetrics(state.session, elapsedSeconds)
 
@@ -124,8 +163,11 @@ class PracticeViewModel(
             _uiState.update { it.copy(isSaving = true) }
             val resultId = repository.savePracticeResult(
                 PracticeResultDraft(
-                    practiceTextId = activeText.id,
-                    practiceTextTitle = activeText.title,
+                    unitId = activeUnit.id,
+                    unitTitle = activeUnit.title,
+                    articleId = activeArticle.id,
+                    articleTitle = activeArticle.title,
+                    articleOrder = activeArticle.order,
                     mode = state.mode,
                     correctKeystrokes = state.session.correctKeystrokes,
                     errorKeystrokes = state.session.errorKeystrokes,
@@ -136,33 +178,44 @@ class PracticeViewModel(
                     createdAt = finishedAt,
                 ),
             )
+            val nextDestination = repository.getCompletionNextDestination(
+                unitId = activeUnit.id,
+                articleId = activeArticle.id,
+            )
             _uiState.update {
                 it.copy(
                     isSaving = false,
                     completedResultId = resultId,
+                    resultActionResultId = resultId,
+                    nextDestination = nextDestination,
                 )
             }
         }
     }
 
     private fun resetSession(
-        nextTextId: String = _uiState.value.selectedTextId,
+        nextUnitId: String = _uiState.value.activeUnitId,
+        nextArticleId: String = _uiState.value.activeArticleId,
         nextMode: com.typemini.app.domain.model.PracticeMode = _uiState.value.mode,
     ) {
         timerJob?.cancel()
 
-        val texts = _uiState.value.texts
-        val nextText = texts.firstOrNull { it.id == nextTextId } ?: texts.firstOrNull()
+        val units = _uiState.value.units
+        val nextUnit = units.firstOrNull { it.id == nextUnitId } ?: units.firstOrNull()
+        val nextArticle = nextUnit?.articles?.firstOrNull { it.id == nextArticleId } ?: nextUnit?.articles?.firstOrNull()
         _uiState.update {
             it.copy(
-                selectedTextId = nextText?.id.orEmpty(),
+                activeUnitId = nextUnit?.id.orEmpty(),
+                activeArticleId = nextArticle?.id.orEmpty(),
                 mode = nextMode,
-                session = createTypingSession(nextText?.content.orEmpty()),
+                session = createTypingSession(nextArticle?.content.orEmpty()),
                 startedAtMillis = null,
                 finishedAtMillis = null,
                 elapsedMillis = 0,
                 isSaving = false,
                 completedResultId = null,
+                resultActionResultId = null,
+                nextDestination = null,
             )
         }
     }

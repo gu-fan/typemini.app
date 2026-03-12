@@ -58,6 +58,32 @@ class TypingSessionTest {
     }
 
     @Test
+    fun `backspace restores previous session state`() {
+        val session = createTypingSession("go")
+        val afterG = applyCharacterToSession(session, 'g', PracticeMode.Space)
+        val afterError = applyCharacterToSession(afterG, 'x', PracticeMode.Space)
+
+        val revertedError = removeLastInputFromSession(afterError)
+        val revertedLetter = removeLastInputFromSession(afterG)
+
+        assertEquals(1, revertedError.activeCharIndex)
+        assertEquals(0, revertedError.errorKeystrokes)
+        assertEquals(0, revertedLetter.activeCharIndex)
+        assertEquals(0, revertedLetter.correctKeystrokes)
+    }
+
+    @Test
+    fun `uppercase and punctuation inputs are accepted`() {
+        val session = createTypingSession("can't")
+        val next = listOf('C', 'A', 'N', '\'', 'T').fold(session) { current, char ->
+            applyCharacterToSession(current, char, PracticeMode.Space)
+        }
+
+        assertTrue(next.isFinished)
+        assertEquals(5, next.correctKeystrokes)
+    }
+
+    @Test
     fun `build typing metrics returns expected values`() {
         val session = TypingSession(
             activeCharIndex = 0,

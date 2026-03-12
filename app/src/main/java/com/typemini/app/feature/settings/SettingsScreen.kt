@@ -32,7 +32,6 @@ fun SettingsRoute(
 
     SettingsScreen(
         state = state,
-        onSelectText = viewModel::selectText,
         onModeSelected = viewModel::updateMode,
     )
 }
@@ -41,7 +40,6 @@ fun SettingsRoute(
 @Composable
 fun SettingsScreen(
     state: PracticeUiState,
-    onSelectText: (String) -> Unit,
     onModeSelected: (PracticeMode) -> Unit,
 ) {
     Column(
@@ -55,35 +53,14 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(
-                text = "Practice Set",
+                text = "Typing Mode",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                state.texts.forEach { text ->
-                    FilterChip(
-                        selected = text.id == state.selectedTextId,
-                        onClick = { onSelectText(text.id) },
-                        label = { Text(text.title) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                        ),
-                    )
-                }
-            }
-        }
-
-        TypeMiniSurfaceCard(
-            modifier = Modifier.fillMaxWidth(),
-        ) {
             Text(
-                text = "Advance Mode",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+                text = "Course selection now lives in the learning flow. Settings only changes how each article is typed.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

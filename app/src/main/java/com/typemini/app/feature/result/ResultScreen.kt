@@ -31,7 +31,9 @@ import com.typemini.app.ui.components.TypeMiniSurfaceCard
 fun ResultRoute(
     resultId: Long,
     repository: PracticeRepository,
-    onPracticeAgain: () -> Unit,
+    primaryActionLabel: String?,
+    onPrimaryAction: ((PracticeResult) -> Unit)?,
+    onPracticeAgain: (PracticeResult) -> Unit,
     onViewHistory: () -> Unit,
 ) {
     val result by repository.observePracticeResult(resultId).collectAsStateWithLifecycle(initialValue = null)
@@ -54,6 +56,8 @@ fun ResultRoute(
 
     ResultScreen(
         result = result!!,
+        primaryActionLabel = primaryActionLabel,
+        onPrimaryAction = onPrimaryAction,
         onPracticeAgain = onPracticeAgain,
         onViewHistory = onViewHistory,
     )
@@ -62,7 +66,9 @@ fun ResultRoute(
 @Composable
 fun ResultScreen(
     result: PracticeResult,
-    onPracticeAgain: () -> Unit,
+    primaryActionLabel: String?,
+    onPrimaryAction: ((PracticeResult) -> Unit)?,
+    onPracticeAgain: (PracticeResult) -> Unit,
     onViewHistory: () -> Unit,
 ) {
     LazyColumn(
@@ -115,7 +121,8 @@ fun ResultScreen(
             TypeMiniSurfaceCard(
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                StatSummaryRow(label = "Practice set", value = result.practiceTextTitle)
+                StatSummaryRow(label = "Unit", value = result.unitTitle)
+                StatSummaryRow(label = "Article", value = result.articleTitle)
                 StatSummaryRow(label = "Mode", value = result.mode.title)
                 StatSummaryRow(label = "Correct keys", value = result.correctKeystrokes.toString())
                 StatSummaryRow(label = "Errors", value = result.errorKeystrokes.toString())
@@ -127,9 +134,17 @@ fun ResultScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Button(
+                if (primaryActionLabel != null && onPrimaryAction != null) {
+                    Button(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { onPrimaryAction(result) },
+                    ) {
+                        Text(primaryActionLabel)
+                    }
+                }
+                OutlinedButton(
                     modifier = Modifier.fillMaxWidth(),
-                    onClick = onPracticeAgain,
+                    onClick = { onPracticeAgain(result) },
                 ) {
                     Text("Practice again")
                 }

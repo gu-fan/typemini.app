@@ -16,9 +16,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -51,20 +53,38 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.typemini.app.R
 import com.typemini.app.domain.session.TypingSession
 
-private val KeyboardRows = listOf(
+private val LetterKeyboardRows = listOf(
     "qwertyuiop".toList(),
     "asdfghjkl".toList(),
     "zxcvbnm".toList(),
 )
 
+private val SymbolKeyboardRows = listOf(
+    "1234567890".toList(),
+    listOf('@', '#', '$', '&', '-', '+', '(', ')', '/'),
+    listOf('%', '"', '\'', ':', ';', '!', '?'),
+)
+
+private enum class KeyboardLayer {
+    Letters,
+    Symbols,
+}
+
 @Composable
 fun PracticeRoute(
     viewModel: PracticeViewModel,
+    unitId: String,
+    articleId: String,
     onResultReady: (Long) -> Unit,
+    onBackToUnit: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(unitId, articleId) {
+        viewModel.loadArticle(unitId, articleId)
+    }
 
     LaunchedEffect(uiState.completedResultId) {
         uiState.completedResultId?.let { resultId ->
@@ -77,6 +97,8 @@ fun PracticeRoute(
         state = uiState,
         onRestart = viewModel::restart,
         onInput = viewModel::onInput,
+        onBackspace = viewModel::onBackspace,
+        onBackToUnit = onBackToUnit,
         onOpenHistory = onOpenHistory,
         onOpenSettings = onOpenSettings,
     )
@@ -87,15 +109,20 @@ fun PracticeScreen(
     state: PracticeUiState,
     onRestart: () -> Unit,
     onInput: (String) -> PracticeInputFeedback,
+    onBackspace: () -> PracticeInputFeedback,
+    onBackToUnit: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
-    val activeText = state.activeText ?: return
+    val activeArticle = state.activeArticle ?: return
+    val activeUnit = state.activeUnit ?: return
     val soundPlayer = rememberPracticeSoundPlayer(context)
+    var keyboardLayer by remember(state.activeArticleId) { mutableStateOf(KeyboardLayer.Letters) }
+    var isShiftEnabled by remember(state.activeArticleId) { mutableStateOf(false) }
 
-    LaunchedEffect(state.selectedTextId, state.mode) {
+    LaunchedEffect(state.activeArticleId, state.mode) {
         keyboardController?.hide()
     }
 
@@ -108,7 +135,9 @@ fun PracticeScreen(
     ) {
         PracticeTopBar(
             modifier = Modifier.padding(horizontal = 12.dp),
-            title = activeText.title,
+            title = activeArticle.title,
+            subtitle = "${activeUnit.title} · Article ${activeArticle.order}",
+            onBackToUnit = onBackToUnit,
             onRestart = onRestart,
             onOpenHistory = onOpenHistory,
             onOpenSettings = onOpenSettings,
@@ -136,13 +165,44 @@ fun PracticeScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 4.dp)
                 .padding(bottom = 10.dp),
+            keyboardLayer = keyboardLayer,
+            isShiftEnabled = isShiftEnabled,
             waitingForSpace = state.session.waitingForSpace,
             onLetterPress = { letter ->
-                when (onInput(letter.toString())) {
+                val emittedLetter = if (keyboardLayer == KeyboardLayer.Letters && isShiftEnabled) {
+                    letter.uppercaseChar()
+                } else {
+                    letter
+                }
+                when (onInput(emittedLetter.toString())) {
                     PracticeInputFeedback.Correct -> soundPlayer.playCorrect()
                     PracticeInputFeedback.Error -> soundPlayer.playError()
                     PracticeInputFeedback.Ignored -> Unit
                 }
+                if (keyboardLayer == KeyboardLayer.Letters && isShiftEnabled && letter.isLetter()) {
+                    isShiftEnabled = false
+                }
+            },
+            onShiftPress = {
+                soundPlayer.playCorrect()
+                keyboardLayer = KeyboardLayer.Letters
+                isShiftEnabled = !isShiftEnabled
+            },
+            onBackspacePress = {
+                when (onBackspace()) {
+                    PracticeInputFeedback.Correct -> soundPlayer.playCorrect()
+                    PracticeInputFeedback.Error -> soundPlayer.playError()
+                    PracticeInputFeedback.Ignored -> Unit
+                }
+            },
+            onSymbolToggle = {
+                soundPlayer.playCorrect()
+                keyboardLayer = if (keyboardLayer == KeyboardLayer.Letters) {
+                    KeyboardLayer.Symbols
+                } else {
+                    KeyboardLayer.Letters
+                }
+                isShiftEnabled = false
             },
             onSpacePress = {
                 when (onInput(" ")) {
@@ -159,6 +219,8 @@ fun PracticeScreen(
 private fun PracticeTopBar(
     modifier: Modifier = Modifier,
     title: String,
+    subtitle: String,
+    onBackToUnit: () -> Unit,
     onRestart: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -171,14 +233,56 @@ private fun PracticeTopBar(
             .padding(horizontal = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = title,
+        Surface(
+            modifier = Modifier
+                .width(94.dp)
+                .height(44.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            onClick = onBackToUnit,
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Back to unit",
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "Unit",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Column(
             modifier = Modifier.weight(1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
 
         Spacer(modifier = Modifier.width(6.dp))
 
@@ -418,8 +522,13 @@ private fun SpaceAdvanceIndicator(
 
 @Composable
 private fun PracticeKeyboard(
+    keyboardLayer: KeyboardLayer,
+    isShiftEnabled: Boolean,
     waitingForSpace: Boolean,
     onLetterPress: (Char) -> Unit,
+    onShiftPress: () -> Unit,
+    onBackspacePress: () -> Unit,
+    onSymbolToggle: () -> Unit,
     onSpacePress: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -432,48 +541,43 @@ private fun PracticeKeyboard(
             .padding(horizontal = 5.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        KeyboardRows.forEachIndexed { rowIndex, keys ->
+        val rows = if (keyboardLayer == KeyboardLayer.Letters) LetterKeyboardRows else SymbolKeyboardRows
+
+        rows.take(2).forEachIndexed { rowIndex, keys ->
             KeyboardLetterRow(
                 keys = keys,
+                isShiftEnabled = keyboardLayer == KeyboardLayer.Letters && isShiftEnabled,
                 sidePaddingWeight = when (rowIndex) {
                     1 -> 0.34f
-                    2 -> 0.92f
                     else -> 0f
                 },
                 onLetterPress = onLetterPress,
             )
         }
 
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(46.dp),
-            shape = RoundedCornerShape(18.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = 0.dp,
-            shadowElevation = 0.dp,
-            onClick = onSpacePress,
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "space",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = if (waitingForSpace) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                )
-            }
-        }
+        KeyboardActionRow(
+            keys = rows[2],
+            keyboardLayer = keyboardLayer,
+            isShiftEnabled = isShiftEnabled,
+            onLetterPress = onLetterPress,
+            onShiftPress = onShiftPress,
+            onBackspacePress = onBackspacePress,
+        )
+
+        KeyboardBottomRow(
+            keyboardLayer = keyboardLayer,
+            waitingForSpace = waitingForSpace,
+            onSymbolToggle = onSymbolToggle,
+            onLetterPress = onLetterPress,
+            onSpacePress = onSpacePress,
+        )
     }
 }
 
 @Composable
 private fun KeyboardLetterRow(
     keys: List<Char>,
+    isShiftEnabled: Boolean,
     sidePaddingWeight: Float,
     onLetterPress: (Char) -> Unit,
 ) {
@@ -487,30 +591,149 @@ private fun KeyboardLetterRow(
         }
 
         keys.forEach { key ->
-            Surface(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(46.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp,
+            KeyboardKey(
+                text = if (isShiftEnabled) key.uppercaseChar().toString() else key.toString(),
                 onClick = { onLetterPress(key) },
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = key.toString(),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
+                modifier = Modifier.weight(1f),
+            )
         }
 
         if (sidePaddingWeight > 0f) {
             Spacer(modifier = Modifier.weight(sidePaddingWeight))
+        }
+    }
+}
+
+@Composable
+private fun KeyboardActionRow(
+    keys: List<Char>,
+    keyboardLayer: KeyboardLayer,
+    isShiftEnabled: Boolean,
+    onLetterPress: (Char) -> Unit,
+    onShiftPress: () -> Unit,
+    onBackspacePress: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        KeyboardKey(
+            text = if (keyboardLayer == KeyboardLayer.Letters) {
+                if (isShiftEnabled) "SHIFT ON" else "SHIFT"
+            } else {
+                "ABC"
+            },
+            onClick = onShiftPress,
+            modifier = Modifier.weight(1.55f),
+            textStyle = MaterialTheme.typography.labelLarge,
+            containerColor = if (keyboardLayer == KeyboardLayer.Letters && isShiftEnabled) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerHigh
+            },
+            contentColor = if (keyboardLayer == KeyboardLayer.Letters && isShiftEnabled) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+        )
+
+        keys.forEach { key ->
+            KeyboardKey(
+                text = if (keyboardLayer == KeyboardLayer.Letters && isShiftEnabled) {
+                    key.uppercaseChar().toString()
+                } else {
+                    key.toString()
+                },
+                onClick = { onLetterPress(key) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        KeyboardKey(
+            text = "BACK",
+            onClick = onBackspacePress,
+            modifier = Modifier.weight(1.55f),
+            textStyle = MaterialTheme.typography.labelLarge,
+        )
+    }
+}
+
+@Composable
+private fun KeyboardBottomRow(
+    keyboardLayer: KeyboardLayer,
+    waitingForSpace: Boolean,
+    onSymbolToggle: () -> Unit,
+    onLetterPress: (Char) -> Unit,
+    onSpacePress: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        KeyboardKey(
+            text = if (keyboardLayer == KeyboardLayer.Letters) "123" else "ABC",
+            onClick = onSymbolToggle,
+            modifier = Modifier.weight(1.45f),
+            textStyle = MaterialTheme.typography.labelLarge,
+        )
+        KeyboardKey(
+            text = "'",
+            onClick = { onLetterPress('\'') },
+            modifier = Modifier.weight(1f),
+        )
+        KeyboardKey(
+            text = ",",
+            onClick = { onLetterPress(',') },
+            modifier = Modifier.weight(1f),
+        )
+        KeyboardKey(
+            text = "space",
+            onClick = onSpacePress,
+            modifier = Modifier.weight(4.2f),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = if (waitingForSpace) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+        )
+        KeyboardKey(
+            text = ".",
+            onClick = { onLetterPress('.') },
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun KeyboardKey(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    textStyle: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.titleMedium,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor: Color = MaterialTheme.colorScheme.onSurface,
+) {
+    Surface(
+        modifier = modifier.height(46.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = containerColor,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        onClick = onClick,
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = text,
+                style = textStyle,
+                color = contentColor,
+                maxLines = 1,
+            )
         }
     }
 }

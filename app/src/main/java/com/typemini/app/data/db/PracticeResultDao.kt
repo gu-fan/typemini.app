@@ -19,4 +19,7 @@ interface PracticeResultDao {
 
     @Query("SELECT * FROM practice_results WHERE id = :id LIMIT 1")
     fun observeResult(id: Long): Flow<PracticeResultEntity?>
+
+    @Query("SELECT * FROM practice_results")
+    suspend fun getAllResults(): List<PracticeResultEntity>
 }
