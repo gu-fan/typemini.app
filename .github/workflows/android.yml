@@ -1,0 +1,42 @@
+name: Android
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.1"
+
+      - name: Run unit tests and assemble artifacts
+        run: ./gradlew lint test assembleDebug bundleRelease
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: typemini-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+
+      - name: Upload release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: typemini-release-aab
+          path: app/build/outputs/bundle/release/*.aab
